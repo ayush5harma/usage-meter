@@ -13,14 +13,14 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install verification tools
+        run: brew install shellcheck ripgrep
       - name: Run fixture checks
         run: |
           bash test/codex-fixtures/run-all.sh
           bash test/agy-statusline/run-all.sh
       - name: Check contrast
         run: swift test/contrast/contrast.swift
-      - name: Install ShellCheck
-        run: brew install shellcheck
       - name: Check shell scripts
         run: |
           for script in build.sh install.sh uninstall.sh bin/usage-meter-stats \

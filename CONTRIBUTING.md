@@ -16,7 +16,7 @@ Requirements are macOS and the Xcode Command Line Tools. Build into a scratch di
 APP_DIR=/tmp/usage-meter-dev bash build.sh --force
 ```
 
-Run the relevant checks before opening a pull request:
+Install ShellCheck and ripgrep (`brew install shellcheck ripgrep`), then run the relevant checks before opening a pull request:
 
 ```sh
 bash test/codex-fixtures/run-all.sh
