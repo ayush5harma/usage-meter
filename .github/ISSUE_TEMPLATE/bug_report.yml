@@ -1,0 +1,33 @@
+name: Bug report
+description: Report a reproducible problem in Usage Meter
+title: "bug: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include account emails, OAuth tokens, Keychain output, or cache contents. For security issues, use private vulnerability reporting instead.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. …
+        2. …
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "for example, macOS 15.3"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Safe diagnostics
+      description: Paste redacted errors only. Remove emails, paths, tokens, and usage data.

@@ -1,0 +1,36 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run fixture checks
+        run: |
+          bash test/codex-fixtures/run-all.sh
+          bash test/agy-statusline/run-all.sh
+      - name: Check contrast
+        run: swift test/contrast/contrast.swift
+      - name: Install ShellCheck
+        run: brew install shellcheck
+      - name: Check shell scripts
+        run: |
+          for script in build.sh install.sh uninstall.sh bin/usage-meter-stats \
+            test/codex-fixtures/run-all.sh test/agy-statusline/run-all.sh; do
+            bash -n "$script"
+            shellcheck -S warning -x "$script"
+          done
+      - name: Build a scratch app
+        run: APP_DIR="$RUNNER_TEMP/usage-meter" bash build.sh --force
+      - name: Render sample UI without accounts
+        run: >-
+          "$RUNNER_TEMP/usage-meter/Usage Meter.app/Contents/MacOS/UsageMeter"
+          --menu-preview "$RUNNER_TEMP/usage-meter-preview.png"
