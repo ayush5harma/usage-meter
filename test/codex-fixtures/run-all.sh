@@ -62,7 +62,7 @@ codex_expr() { python3 -c 'import json,sys; c=json.loads(sys.stdin.read())["code
 
 say() { printf '\n%s\n' "$*"; }
 
-say "free-single-window — the shape this fleet's own account reports"
+say "free-single-window — a single-window account shape"
 out="$(collect "$HERE/free-single-window.json" free)"
 check "one window"        "$(printf '%s' "$out" | field '["limits"].__len__()')" "1"
 check "labelled 30-day"   "$(printf '%s' "$out" | field '["limits"][0]["label"]')" "30-day"
@@ -72,7 +72,19 @@ check "plan free"         "$(printf '%s' "$out" | field '["plan"]')" "free"
 check "no details yet"    "$(printf '%s' "$out" | field '.get("details", ["Model: GPT-5.6-Terra"])[0]')" "Model: GPT-5.6-Terra"
 
 say "paid-two-windows — the 5-hour + weekly pair a paid plan reports"
-out="$(collect "$HERE/paid-two-windows.json" paid)"
+python3 - "$HERE/paid-two-windows.json" "$WORK/paid-fresh.json" <<'PY'
+import json, sys, time
+
+data = json.load(open(sys.argv[1]))
+now = int(time.time())
+snapshots = [data["account/rateLimits/read"].get("rateLimits", {})]
+snapshots += list((data["account/rateLimits/read"].get("rateLimitsByLimitId") or {}).values())
+for snapshot in snapshots:
+    snapshot["primary"]["resetsAt"] = now + 3600
+    snapshot["secondary"]["resetsAt"] = now - 60
+json.dump(data, open(sys.argv[2], "w"))
+PY
+out="$(collect "$WORK/paid-fresh.json" paid)"
 check "two windows"       "$(printf '%s' "$out" | field '["limits"].__len__()')" "2"
 check "first is 5h"       "$(printf '%s' "$out" | field '["limits"][0]["label"]')" "5h"
 check "second is Weekly"  "$(printf '%s' "$out" | field '["limits"][1]["label"]')" "Weekly"
@@ -80,7 +92,8 @@ check "5h metadata"       "$(printf '%s' "$out" | codex_expr '(c["limits"][0]["d
 check "weekly metadata"   "$(printf '%s' "$out" | codex_expr '(c["limits"][1]["duration_mins"], c["limits"][1]["cadence"])')" "(10080, 'weekly')"
 check "5h percentage"     "$(printf '%s' "$out" | field '["limits"][0]["pct"]')" "42"
 check "weekly percentage" "$(printf '%s' "$out" | field '["limits"][1]["pct"]')" "7"
-check "5h counts down"    "$(printf '%s' "$out" | field '["limits"][0]["reset_in"] > 0')" "True"
+check "5h counts down"    "$(printf '%s' "$out" | codex_expr '0 < c["limits"][0]["reset_in"] <= 3600')" "True"
+check "expired reset is zero" "$(printf '%s' "$out" | field '["limits"][1]["reset_in"]')" "0"
 check "plan pro"          "$(printf '%s' "$out" | field '["plan"]')" "pro"
 check "credit balance"    "$(printf '%s' "$out" | field '["details"][0]')" "Credits: 1,250"
 check "model named"       "$(printf '%s' "$out" | field '["details"][1]')" "Model: GPT-5.6-Terra"

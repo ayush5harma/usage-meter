@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement to Usage Meter
+title: "feature: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: Describe the user need or workflow.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain what you would expect Usage Meter to do.

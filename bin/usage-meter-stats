@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Emit ONE JSON blob for the "Usage Meter" menu-bar app: the Claude account's
 # real rate-limit utilisation, plus a section per OTHER agentic CLI installed on
-# this Mac that can report its own quota locally.
+# the current Mac that can report its own quota locally.
 #
 # PRESENCE-GATED, ALWAYS. A tool that is not installed contributes no key at
 # all, so the blob carries the same keys and the same values it carried before
@@ -611,7 +611,7 @@ CODEX_CACHE = CACHE_DIR / "codex-usage.json"
 # Bumped whenever a reading gains a field the app draws. A cache written by an
 # older collector is then simply not a cache, and the next poll refetches once
 # instead of serving a reading with the new rows missing for up to a TTL --
-# which is exactly what an upgraded collector did on this Mac before the gate
+# which is exactly what an upgraded collector did before the gate
 # existed: correct numbers, no model rows, for fifteen minutes, and nothing on
 # screen to say why (measured 2026-09-21).
 CODEX_CACHE_VERSION = 3
@@ -642,7 +642,7 @@ CODEX_FETCH_ERROR_TEXT = {"spawn": "codex would not start", "timeout": "codex di
 
 
 def codex_binary():
-    """The codex executable, or None when this Mac has none."""
+    """The codex executable, or None when the current Mac has none."""
     found = shutil.which("codex")
     if found:
         return found
@@ -1074,7 +1074,7 @@ def codex_fetch(binary):
 
 
 def codex_section():
-    """The `codex` key of the blob, or None when this Mac has no codex at all."""
+    """The `codex` key of the blob, or None when the current Mac has no codex at all."""
     if env("CODEX", "1") == "0":
         return None
     binary = codex_binary()
@@ -1223,7 +1223,7 @@ AGY_HOME = pathlib.Path(os.environ.get("GEMINI_HOME") or (HOME / ".gemini"))
 
 
 def agy_section():
-    """The `agy` key of the blob, or None when this Mac has no agy."""
+    """The `agy` key of the blob, or None when the current Mac has no agy."""
     if env("AGY", "1") == "0":
         return None
     binary = shutil.which("agy")

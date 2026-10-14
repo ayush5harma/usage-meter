@@ -503,14 +503,14 @@ func barsGlyph(_ limits: [Limit], groupAfter: Int = 0, badge: NSColor? = nil) ->
     // A wider gap after Claude's block, so five lines read as two groups rather
     // than as a run of five.
     let groupGap: CGFloat = (groupAfter > 0 && groupAfter < count) ? 1.6 : 0
-    // The item never gets wider; the stack gets denser. Measured on this Mac,
-    // whose menu bar reports 22 pt: three bars are EXACTLY the geometry this
+    // The item never gets wider; the stack gets denser. Measured on a 22 pt
+    // macOS menu bar: three bars are EXACTLY the geometry this
     // meter has always drawn (2.600 pt bars, 2.200 pt gaps, a 12.2 pt stack,
     // unscaled); a fourth costs 3.5% of the bar's thickness (2.508 pt) and a
     // fifth costs a quarter of it (1.956 pt), which at 2x is still four solid
     // pixels of colour. The first draft of this comment said "four at full
     // thickness, five shrinks by a tenth" and both figures were wrong -- they
-    // were reasoned from a 24 pt bar that this Mac does not have.
+    // were reasoned from a 24 pt menu bar instead.
     var barHeight: CGFloat = 2.6, gap: CGFloat = 2.2
     let bars = barHeight * CGFloat(count) + gap * CGFloat(count - 1)
     let maxStack = max(12.2, menuBarHeight - 4)
@@ -632,11 +632,26 @@ func renderMenuPreview(_ argv: [String]) -> Never {
     }
     NSApplication.shared.setActivationPolicy(.prohibited)
     verifyCompactWindowSelection()
-    let image = providerGaugeGlyph([
-        ProviderGauge(name: "Claude", windows: [("Session", Limit(pct: 42)), ("Week", Limit(pct: 18))]),
-        ProviderGauge(name: "Codex", windows: [("5h", Limit(pct: 21)), ("Weekly", Limit(pct: 8))]),
-        ProviderGauge(name: "Agy", windows: [("daily", Limit(pct: 1)), ("weekly", Limit(pct: 61))], stale: true),
-    ], collectorSick: false)
+    var preview: NSImage?
+    NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
+        let glyph = providerGaugeGlyph([
+            ProviderGauge(name: "Claude", windows: [("Session", Limit(pct: 42)), ("Week", Limit(pct: 18))]),
+            ProviderGauge(name: "Codex", windows: [("5h", Limit(pct: 21)), ("Weekly", Limit(pct: 8))]),
+            ProviderGauge(name: "Agy", windows: [("daily", Limit(pct: 1)), ("weekly", Limit(pct: 61))], stale: true),
+        ], collectorSick: false)
+        // 2026-10-14: the preview uses the live glyph at native size and a fixed
+        // appearance so documentation never needs a desktop or account capture.
+        let image = NSImage(size: NSSize(width: 300, height: 66))
+        image.lockFocus()
+        NSColor(calibratedWhite: 31.0 / 255.0, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(origin: .zero, size: image.size)).fill()
+        glyph.draw(at: NSPoint(x: (image.size.width - glyph.size.width) / 2,
+                               y: (image.size.height - glyph.size.height) / 2),
+                   from: .zero, operation: .sourceOver, fraction: 1)
+        image.unlockFocus()
+        preview = image
+    }
+    guard let image = preview else { exit(70) }
     guard let tiff = image.tiffRepresentation,
           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else {
         exit(70)

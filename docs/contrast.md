@@ -50,7 +50,7 @@ Against the fixed 0.58 blend the app shipped with until this change, the
 **light** appearance failed everywhere: every fill sat between 1.25:1 and
 2.62:1 against the track, and the health badge — the mark that says the meter
 itself is broken — reached **1.25:1**, which is not a badge. The dark
-appearance, which is the one the author runs, was fine throughout, which is
+appearance was fine throughout, which is
 exactly why it went unnoticed.
 
 Two fixes, both in `muted()`:

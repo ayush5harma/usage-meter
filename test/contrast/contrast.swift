@@ -1,7 +1,7 @@
 // Resolve every colour the meter DRAWS under both appearances and report the
 // contrast between the pairs that have to be told apart, so "does the glyph
 // survive a light menu bar" is answered with numbers instead of with a
-// screenshot of the one appearance the author happens to run.
+// screenshot of only one appearance.
 //
 // It duplicates `muted()` and the colour choices from Sources/main.swift on
 // purpose: this is a measurement of those choices, and a measurement that
