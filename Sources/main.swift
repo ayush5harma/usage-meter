@@ -570,57 +570,61 @@ func providerGaugeGlyph(_ providers: [ProviderGauge], collectorSick: Bool) -> NS
     let width: CGFloat = 84
     let column: CGFloat = 28
     let labelFont = NSFont.systemFont(ofSize: 9, weight: .medium)
-    let image = NSImage(size: NSSize(width: width, height: menuBarHeight))
-    image.lockFocus()
-    NSGraphicsContext.current?.shouldAntialias = true
-    // Keep the name and its bar as one centred unit. A notched Mac can report
-    // a 37 pt status bar; pinning the name to its top and the bar to y=3.5
-    // turned one gauge into two unrelated marks there.
-    let stackHeight: CGFloat = 18
-    let bottomY = (menuBarHeight - stackHeight) / 2
-    let topY = bottomY + 4
-    let labelY = bottomY + 8
-    for (index, provider) in providers.enumerated() {
-        let x = CGFloat(index) * column
-        let shortName = ["Claude": "Cl", "Codex": "Cx", "Agy": "Agy"][provider.name] ?? provider.name
-        let label = NSAttributedString(string: shortName, attributes: [
-            .font: labelFont,
-            .foregroundColor: provider.stale ? NSColor.tertiaryLabelColor : NSColor.labelColor,
-        ])
-        label.draw(at: NSPoint(x: x + (22 - label.size().width) / 2, y: labelY))
-        if provider.stale {
-            // A small age dot avoids widening the compact mark; the tooltip explains it.
-            NSColor.secondaryLabelColor.setFill()
-            NSBezierPath(ovalIn: NSRect(x: x + 23, y: labelY + 4, width: 2, height: 2)).fill()
-        }
-        for (window, y) in zip(provider.windows, [topY, bottomY]) {
-            let bar = NSRect(x: x, y: y, width: 22, height: 2.5)
-            if let limit = window.1 {
-                let color = provider.stale ? NSColor.tertiaryLabelColor : gaugeColor(limit, index)
-                drawGauge(bar, pct: limit.pct, color: color)
-            } else {
-                NSColor.quaternaryLabelColor.setStroke()
-                NSBezierPath(roundedRect: bar, xRadius: bar.height / 2, yRadius: bar.height / 2).stroke()
-                let dash = NSAttributedString(string: "—", attributes: [
-                    .font: NSFont.systemFont(ofSize: 9, weight: .regular),
-                    .foregroundColor: NSColor.tertiaryLabelColor,
-                ])
-                dash.draw(at: NSPoint(x: bar.midX - dash.size().width / 2, y: bar.midY - 4))
+    // DRAWN AT DISPLAY TIME, not rasterised here. A `lockFocus` bitmap resolved
+    // the adaptive label colours once, against the app's appearance when
+    // render() ran, so a dark menu bar got dark-grey labels and tracks
+    // (2026-10-26, macOS 27 dark mode). A drawing handler runs when the status
+    // button draws, under the button's own effectiveAppearance -- the menu
+    // bar's -- so labelColor is light on a dark bar and dark on a light one.
+    return NSImage(size: NSSize(width: width, height: menuBarHeight), flipped: false) { _ in
+        NSGraphicsContext.current?.shouldAntialias = true
+        // Keep the name and its bar as one centred unit. A notched Mac can report
+        // a 37 pt status bar; pinning the name to its top and the bar to y=3.5
+        // turned one gauge into two unrelated marks there.
+        let stackHeight: CGFloat = 18
+        let bottomY = (menuBarHeight - stackHeight) / 2
+        let topY = bottomY + 4
+        let labelY = bottomY + 8
+        for (index, provider) in providers.enumerated() {
+            let x = CGFloat(index) * column
+            let shortName = ["Claude": "Cl", "Codex": "Cx", "Agy": "Agy"][provider.name] ?? provider.name
+            let label = NSAttributedString(string: shortName, attributes: [
+                .font: labelFont,
+                .foregroundColor: provider.stale ? NSColor.tertiaryLabelColor : NSColor.labelColor,
+            ])
+            label.draw(at: NSPoint(x: x + (22 - label.size().width) / 2, y: labelY))
+            if provider.stale {
+                // A small age dot avoids widening the compact mark; the tooltip explains it.
+                NSColor.secondaryLabelColor.setFill()
+                NSBezierPath(ovalIn: NSRect(x: x + 23, y: labelY + 4, width: 2, height: 2)).fill()
+            }
+            for (window, y) in zip(provider.windows, [topY, bottomY]) {
+                let bar = NSRect(x: x, y: y, width: 22, height: 2.5)
+                if let limit = window.1 {
+                    let color = provider.stale ? NSColor.tertiaryLabelColor : gaugeColor(limit, index)
+                    drawGauge(bar, pct: limit.pct, color: color)
+                } else {
+                    NSColor.quaternaryLabelColor.setStroke()
+                    NSBezierPath(roundedRect: bar, xRadius: bar.height / 2, yRadius: bar.height / 2).stroke()
+                    let dash = NSAttributedString(string: "—", attributes: [
+                        .font: NSFont.systemFont(ofSize: 9, weight: .regular),
+                        .foregroundColor: NSColor.tertiaryLabelColor,
+                    ])
+                    dash.draw(at: NSPoint(x: bar.midX - dash.size().width / 2, y: bar.midY - 4))
+                }
             }
         }
+        if collectorSick {
+            let badge = NSBezierPath()
+            badge.move(to: NSPoint(x: width - 7, y: menuBarHeight - 1))
+            badge.line(to: NSPoint(x: width - 1, y: menuBarHeight - 1))
+            badge.line(to: NSPoint(x: width - 1, y: menuBarHeight - 7))
+            badge.close()
+            muted(.systemRed).setFill()
+            badge.fill()
+        }
+        return true
     }
-    if collectorSick {
-        let badge = NSBezierPath()
-        badge.move(to: NSPoint(x: width - 7, y: menuBarHeight - 1))
-        badge.line(to: NSPoint(x: width - 1, y: menuBarHeight - 1))
-        badge.line(to: NSPoint(x: width - 1, y: menuBarHeight - 7))
-        badge.close()
-        muted(.systemRed).setFill()
-        badge.fill()
-    }
-    image.unlockFocus()
-    image.isTemplate = false
-    return image
 }
 
 // A deterministic rendering path for design review. It draws the exact live
@@ -896,6 +900,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lastGoodCollection: Date?   // when the collector last returned parseable JSON
     private var failStreak = 0
     private var collecting = false
+    private var appearanceObservation: NSKeyValueObservation?
 
     // Where the collector may live, in order. The environment wins so a checkout
     // can be tested without installing, then the two usual bin directories.
@@ -986,6 +991,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ], collectorSick: false)
             button.toolTip = "Quota used — collecting readings"
             button.setAccessibilityLabel("Quota used — collecting readings")
+            // A fresh image when the menu bar flips light/dark (or goes grey
+            // under Reduce Transparency), so no cached rendering of the glyph
+            // outlives the appearance it was drawn for.
+            appearanceObservation = button.observe(\.effectiveAppearance) { [weak self] _, _ in
+                DispatchQueue.main.async { self?.render() }
+            }
         }
         refresh()
 
